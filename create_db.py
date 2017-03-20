@@ -23,32 +23,6 @@ def entrez_uniprot_init(mongo_db):
     collection = mongo_db[collection]
     return collection
 
-# don't need this function
-def create_entrez_id_to_index(in_file, delimiter, psql_conn):
-    cur = psql_conn.cursor()
-    create_table = '''
-                CREATE TABLE entrez_id_to_index (
-                    index INTEGER,
-                    entrez_id INTEGER PRIMARY KEY
-                );
-                '''
-    cur.execute(create_table)
-
-    insert_table = '''
-                INSERT INTO entrez_id_to_index (index, entrez_id)
-                VALUES (%s, %s);
-                '''
-    # should be the ROSMAP_RNASeq_entrez file
-    with open(in_file) as fi:
-        entrez_id_arr = fi.readline().strip().split(delimiter)
-        index = 0
-        for entrez_id in entrez_id_arr[2:]:
-            cur.execute(insert_table, (index, entrez_id))
-            index += 1
-
-    #psql_conn.commit()
-    cur.close()
-
 # Running statistic table for storing mean and population standard deviation
 # as well as size of data for fast query.
 def create_running_stat_table(psql_conn):
