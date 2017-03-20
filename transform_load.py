@@ -275,7 +275,8 @@ def running_stat_file_insert(in_file, delimiter, header, psql_conn):
                 INSERT INTO {t} (entrez_id,size,mean,std_pop)
                 VALUES (%s,%s,NULLIF(%s, 'nan'), NULLIF(%s, 'nan'))
                 ON CONFLICT (entrez_id)
-                DO NOTHING;
+                DO UPDATE
+                SET size = EXCLUDED.size, mean = EXCLUDED.size, std_pop = EXCLUDED.size;
                 '''
     cur = psql_conn.cursor()
 
