@@ -6,7 +6,8 @@ https://www.postgresql.org/download/
 MongoDB
 https://www.mongodb.com/download-center
 
-pip
+pip (I used pip3 for the entire project)
+$sudo apt-get install python3-pip
 https://pip.pypa.io/en/stable/installing/
 
 How to install python packages using pip
