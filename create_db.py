@@ -3,72 +3,33 @@ from pymongo import MongoClient
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
-def mongo_db_init(mongo_client):
-    database = input('Enter the name of your MongoDB database: ')
-    db = mongo_client[database]
-    return db
-
-def gene_expr_init(mongo_db):
-    collection = input('Enter patient gene expression profile collection name: ')
-    collection = mongo_db[collection]
-    return collection
-
-def patients_init(mongo_db):
-    collection = input('Enter patient age, gender, education collection name: ')
-    collection = mongo_db[collection]
-    return collection
+def get_mongodb_collection(database, collection, mongo_client):
+    mongo_db = mongo_client[database]
+    result = mongo_db[collection]
+    return result
 
 def entrez_uniprot_init(mongo_db):
     collection = input('Enter Entrez ID, uniprot ID, and gene name collection name: ')
     collection = mongo_db[collection]
     return collection
 
-# Running statistic table for storing mean and population standard deviation
-# as well as size of data for fast query.
-def create_running_stat_table(psql_conn):
-    print('Creating auxiliary tables "NCI", "MCI", "AD", "other", and "NA"...')
-    diagnosis = ['nci','mci','ad','other','na']
-    create_table = '''
-                    CREATE TABLE {t} (
-                        entrez_id INTEGER PRIMARY KEY,
-                        size INTEGER,
-                        mean DOUBLE PRECISION,
-                        std_pop DOUBLE PRECISION
-                    );
-                '''
-    cur = psql_conn.cursor()
-    for table in diagnosis:
-        cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)', (table,))
-        if not cur.fetchone()[0]:
-            cur.execute(create_table.format(t=table))
-            print('{t} table created.'.format(t=table))
-        else:
-            cur.close()
-            print('ERROR: table {t} already exists.'.format(t=table))
-            print('File import aborted.')
-            return False
-
-    #psql_conn.commit()
-    cur.close()
-    return True
-
-def create_entrez_uniprot_table(psql_conn):
-    print('The Entre ID, Uniprot ID, and gene info. table will be named "entrez_uniprot".')
+def create_entrez_uniprot_table(table, psql_conn):
+    print('The Entre ID, Uniprot ID, and gene info. table will be named "{t}".'.format(t=table))
     #table_name = input('Enter the table name with entrez ID to uniprot ID mapping: ')
 
     create_table = '''
                 CREATE TABLE entrez_uniprot (
-                    entrez_id INTEGER,
-                    uniprot_id VARCHAR(20) PRIMARY KEY,
+                    entrez_id INTEGER PRIMARY KEY,
+                    uniprot_id VARCHAR[],
                     gene_name VARCHAR(200)
                 );
                 '''
 
     cur = psql_conn.cursor()
-    cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)', ('entrez_uniprot',))
+    cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)', (table,))
     if not cur.fetchone()[0]:
         cur.execute(create_table)
-        #psql_conn.commit()
+        psql_conn.commit()
         cur.close()
         print('"entrez_uniprot" table created.')
         return True
@@ -76,6 +37,7 @@ def create_entrez_uniprot_table(psql_conn):
     else:
         cur.close()
         print('ERROR: table "entrez_uniprot" already exists.')
+        print('Skipping "entrez_uniprot" table creation')
         return False
 
 def get_psql_db_info():
@@ -95,7 +57,7 @@ def psql_db_init(psql_conn):
 
     if not cur.fetchone()[0]:
         cur.execute(create_database)
-        #psql_conn.commit()
+        psql_conn.commit()
         cur.close()
         psql_conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
         print('{d} database created.'.format(d=database_name))

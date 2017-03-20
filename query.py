@@ -8,12 +8,13 @@ def get_gene_stat(entrez_id, diagnosis, column, psql_conn):
         info = cdb.get_psql_db_info()
         psql_conn = cdb.psql_init_connect()
 
+    #TODO: %s doesn't work with table names
     select_sql = '''SELECT {col}
                     FROM {table}
                     WHERE entrez_id = {ent};
                     '''.format(col=column,table=diagnosis,ent=entrez_id)
     cur = psql_conn.cursor()
-    cur.execute(select_sql)
+    cur.execute(select_sql, (column, diagnosis, entrez_id))
     result = cur.fetchone()[0]
     if result is None:
         result = 'No data exists for this gene.'
