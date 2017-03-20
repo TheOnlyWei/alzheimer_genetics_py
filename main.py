@@ -27,18 +27,29 @@ def main():
     entrez_uniprot_collection = cdb.entrez_uniprot_init(mongo_db)
     file_path = input('Enter the file path for Entrez ID, Uniprot ID, and gene info.: ')
     delim = input('Enter the delimiter (comma: ",", tab: "t", space: " "): ')
-    tl.entrez_uniprot_file_insert(file_path, delim, True, entrez_uniprot_collection)
+    if tl.entrez_uniprot_file_insert(file_path, delim, True, entrez_uniprot_collection):
+        print('SUCCESS: Entrez ID, Uniprot ID, Gene Name file imported.')
 
-    gene_expr_collection = cdb.gene_expr_collection_init(mongo_db)
+    print()
+
+    gene_expr_collection = cdb.gene_expr_init(mongo_db)
     file_path = input('Enter the file path for patient gene expression profile: ')
     delim = input('Enter the delimiter: ')
-    tl.patient_gene_expr_file_insert(file_path, delim, True, gene_expr_collection)
-    tl.running_stat_file_insert(file_path, delim, True, psql_conn)
+    if tl.running_stat_file_insert(file_path, delim, True, psql_conn):
+        tl.patient_gene_expr_file_insert(file_path, delim, True, gene_expr_collection)
+        print('SUCCESS: patient gene expression profile imported')
+    else:
+        print('ERROR: due to merge conflict of existing tables the patient')
+        print('gene expression profile has not been imported.')
 
-    patients_collection = cdb.patients_collection_init(mongo_db)
+    print()
+
+    patients_collection = cdb.patients_init(mongo_db)
     file_path = input('Enter the file path for patient age, gender, and education: ')
     delim = input('Enter the delimiter: ')
-    tl.patient_info_file_insert(file_path, delim, True, patients_collection)
+    if tl.patient_info_file_insert(file_path, delim, True, patients_collection):
+        print('SUCCESS: patient information data imported.')
+
 
     psql_conn.commit()
 

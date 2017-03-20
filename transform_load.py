@@ -40,6 +40,7 @@ def patient_gene_expr_file_insert(in_file,
                 })
             else:
                 print('Error: patient ID already exists.')
+    return True
 
 def patient_info_file_insert(in_file,
                                 delimiter,
@@ -75,7 +76,7 @@ def patient_info_file_insert(in_file,
                 })
             else:
                 print('Error: patient ID already exists.')
-
+    return True
 
 def entrez_uniprot_file_insert(in_file,
                                 delimiter,
@@ -103,9 +104,7 @@ def entrez_uniprot_file_insert(in_file,
             exists = db_collection.find_one({'_id': data[0]})
 
             if exists is not None:
-                print('exists')
                 exists = db_collection.find({'uniprot_id': {'$elemMatch': data[1]}})
-                print(exists)
                 if not exists:
                     result = db_collection.update(
                         {'_id': data[0]},
@@ -113,37 +112,51 @@ def entrez_uniprot_file_insert(in_file,
                         upsert=True
                     )
             else:
-                print('does not exist')
                 result = db_collection.insert_one({
                     '_id': data[0],
                     'uniprot_id': [data[1]],
                     'gene_name': data[2],
                 })
+    return True
 
 def patient_gene_expr_insert(data, delimiter, db_collection, psql_conn):
     update_running_stat_tables(data, delimiter, psql_conn)
     clean_data = data
     clean_data = clean_data.replace('\n', '')
     clean_data = re.split(r''+delimiter, clean_data)
-    result = db_collection.insert_one({
-        'patient_id': clean_data[0],
-        'diagnosis': clean_data[1],
-        'gene_expression': clean_data[2:]
-    })
+
+    exists = db_collection.find_one({'_id': clean_data[0]})
+    if not exists:
+        result = db_collection.insert_one({
+            '_id': clean_data[0],
+            'diagnosis': clean_data[1],
+            'gene_expression': clean_data[2:]
+        })
+        return True
+    else:
+        print('Error: patient ID already exists.')
+        return False
 
 def patient_info_insert(data, delimiter, db_collection):
     clean_data = data
     clean_data = clean_data.replace('\n', '')
     clean_data = re.split(r''+delimiter, clean_data)
-    for index, info in enumerate(data):
+    for index, info in enumerate(clean_data):
         if info == '':
-            data[index] = 'NA'
-    result = db_collection.insert_one({
-        'patient_id': data[0],
-        'age': data[1],
-        'gender': data[2],
-        'education': data[3]
-    })
+            clean_data[index] = 'NA'
+
+    exists = db_collection.find_one({'_id': clean_data[0]})
+    if not exists:
+        result = db_collection.insert_one({
+            '_id': clean_data[0],
+            'age': clean_data[1],
+            'gender': clean_data[2],
+            'education': clean_data[3]
+        })
+        return True
+    else:
+        print('Error: patient ID already exists.')
+        return False
 
 #UPDATES
 def running_mean_std(prev_mean, prev_std, n, new_data):
@@ -251,16 +264,28 @@ def running_stat_file_insert(in_file, delimiter, header, psql_conn):
         print('Error: unrecognized delimiter.')
         return False
 
+    diagnosis = ['nci','mci','ad','other','na']
     NCI = [1]
     MCI = [2,3]
     AD = [4,5]
     other = [6]
 
+    #TODO: make this sql update instead of DO NOTHING
     insert_sql = '''
                 INSERT INTO {t} (entrez_id,size,mean,std_pop)
-                VALUES (%s,%s,NULLIF(%s, 'nan'), NULLIF(%s, 'nan'));
+                VALUES (%s,%s,NULLIF(%s, 'nan'), NULLIF(%s, 'nan'))
+                ON CONFLICT (entrez_id)
+                DO NOTHING;
                 '''
     cur = psql_conn.cursor()
+
+    for table in diagnosis:
+        cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)', (table,))
+        if not cur.fetchone()[0]:
+            print('A table named {t} does not exist.'.format(t=table))
+            print('File import aborted.')
+            return False
+
     # Loop through all gene columns
     for col in df.ix[:,2:]:
         size = df.loc[df['DIAGNOSIS'].isin(NCI), col].dropna().size

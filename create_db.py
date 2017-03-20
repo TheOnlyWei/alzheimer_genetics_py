@@ -8,12 +8,12 @@ def mongo_db_init(mongo_client):
     db = mongo_client[database]
     return db
 
-def gene_expr_collection_init(mongo_db):
+def gene_expr_init(mongo_db):
     collection = input('Enter patient gene expression profile collection name: ')
     collection = mongo_db[collection]
     return collection
 
-def patients_collection_init(mongo_db):
+def patients_init(mongo_db):
     collection = input('Enter patient age, gender, education collection name: ')
     collection = mongo_db[collection]
     return collection
@@ -27,7 +27,7 @@ def entrez_uniprot_init(mongo_db):
 # as well as size of data for fast query.
 def create_running_stat_table(psql_conn):
     print('Creating auxiliary tables "NCI", "MCI", "AD", "other", and "NA"...')
-    diagnosis = ['NCI','MCI','AD','other','NA']
+    diagnosis = ['nci','mci','ad','other','na']
     create_table = '''
                     CREATE TABLE {t} (
                         entrez_id INTEGER PRIMARY KEY,
@@ -45,6 +45,7 @@ def create_running_stat_table(psql_conn):
         else:
             cur.close()
             print('ERROR: table {t} already exists.'.format(t=table))
+            print('File import aborted.')
             return False
 
     #psql_conn.commit()
