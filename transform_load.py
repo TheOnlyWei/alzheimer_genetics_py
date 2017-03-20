@@ -270,7 +270,6 @@ def running_stat_file_insert(in_file, delimiter, header, psql_conn):
     AD = [4,5]
     other = [6]
 
-    #TODO: make this sql update instead of DO NOTHING
     insert_sql = '''
                 INSERT INTO {t} (entrez_id,size,mean,std_pop)
                 VALUES (%s,%s,NULLIF(%s, 'nan'), NULLIF(%s, 'nan'))
