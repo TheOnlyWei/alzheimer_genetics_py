@@ -6,6 +6,19 @@ https://www.postgresql.org/download/
 MongoDB
 https://www.mongodb.com/download-center
 
+pip
+https://pip.pypa.io/en/stable/installing/
+
+How to install python packages using pip
+https://packaging.python.org/installing/
+
+psycopg2
+$sudo pip3 install psycopg2
+
+pymongo
+$sudo pip3 install pymongo
+
+
 INFORMATION ABOUT THE PROGRAM
 
 1.  FLAT FILES: To set up this part of the database, you need the files:
