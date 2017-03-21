@@ -13,6 +13,25 @@ def entrez_uniprot_init(mongo_db):
     collection = mongo_db[collection]
     return collection
 
+def create_diagnosis_tables(psql_conn, tables = []):
+    create_table = '''
+                CREATE TABLE {t} (
+                    patient_id VARCHAR[20] PRIMARY KEY,
+                    gene_expression double precision []
+                );
+                '''
+    cur = psql_conn.cursor()
+
+    for diagnosis in tables:
+        cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)', (diagnosis,))
+        if not cur.fetchone()[0]:
+            cur.execute(create_table.format(t=diagnosis))
+        else:
+            print('ERROR: table {t} already exists.'.format(t=diagnosis))
+
+    psql_conn.commit()
+    cur.close()
+
 def create_entrez_uniprot_table(table, psql_conn):
     print('The Entre ID, Uniprot ID, and gene info. table will be named "{t}".'.format(t=table))
     #table_name = input('Enter the table name with entrez ID to uniprot ID mapping: ')

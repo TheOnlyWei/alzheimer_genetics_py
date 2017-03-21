@@ -7,38 +7,57 @@ import math
 import re
 
 #BATCH INSERT FILE UPLOAD
-def patient_gene_expr_file_insert(in_file,
-                                    delimiter,
-                                    header,
-                                    db_collection):
-    if delimiter == 't':
-        delimiter = '\t'
-    elif delimiter == '\' \'':
-        delimiter = ' '
-    elif delimiter != ',':
+def patient_gene_expr_file_insert(in_file, delimiter, psql_conn):
+    if delimiter == ',':
+        df = pd.read_csv(in_file)
+    elif delimiter == 't' or delimiter == '\t':
+        df = pd.read_table(in_file)
+    elif delimiter == '\' \'' or  delimiter == ' ':
+        df = pd.read_csv(in_file, delim_whitespace=True)
+    else:
         print('Error: unrecognized delimiter.')
         return False
 
-    with open(in_file, 'r') as fi:
-        if header:
-            next(fi)
-        for line in fi:
-            #data = line.strip().split(delimiter)
-            cur_line = line
-            cur_line = cur_line.replace('\n', '')
-            data = re.split(r''+delimiter, cur_line)
-            if data[1] == '':
-                data[1] = 'NA'
+    df = pd.read_csv(in_file, dtype={'DIAGNOSIS':object})
+    df = df.fillna('NULL')
 
-            exists = db_collection.find_one({'_id': data[0]})
-            if not exists:
-                result = db_collection.insert_one({
-                    '_id': data[0],
-                    'diagnosis': data[1],
-                    'gene_expression': data[2:]
-                })
-            else:
-                print('Error: patient ID {id} already exists.'.format(id=data[0]))
+    NCI = [1]
+    MCI = [2,3]
+    AD = [4,5]
+    other = [6]
+
+    insert_sql = '''
+                    INSERT INTO {t} (patient_id, gene_expression)
+                    VALUES (%s,%s);
+                '''
+    cur = psql_conn.cursor()
+
+    for index, row in df.iterrows():
+        '''
+        print(row['PATIENT_ID'], row['DIAGNOSIS'])
+        arr = row[2:].tolist()
+        print(arr)
+        print()
+        '''
+
+        if row['DIAGNOSIS'].isdigit():
+            if int(row['DIAGNOSIS']) in NCI:
+                cur.execute(insert_sql.format(t='nci'), ())
+
+            elif int(row['DIAGNOSIS']) in MCI:
+                cur.execute(insert_sql.format(t='mci'))
+
+            elif int(row['DIAGNOSIS']) in AD:
+                cur.execute(insert_sql.format(t='ad'))
+
+            elif int(row['DIAGNOSIS']) in other:
+                cur.execute(insert_sql.format(t='other'))
+
+        elif row['DIAGNOSIS'] == 'NULL':
+            # insert into table NA
+                cur.execute(insert_sql.format(t='na'))
+        else:
+            print('ERROR: unknown diagnosis {d}.'.format(d=diagnosis))
 
 def patient_info_file_insert(in_file,
                                 delimiter,
@@ -48,7 +67,7 @@ def patient_info_file_insert(in_file,
         delimiter = '\t'
     elif delimiter == '\' \'':
         delimiter = ' '
-    elif delimiter != ',':
+    elif delimiter != ',' and delimiter != '\t' and delimiter != ' ':
         print('Error: unrecognized delimiter.')
         return False
 
