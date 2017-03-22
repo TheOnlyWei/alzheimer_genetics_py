@@ -36,7 +36,7 @@ def create_entrez_id_to_index(in_file, delimiter, psql_conn):
                     entrez_id INTEGER PRIMARY KEY,
                     index INTEGER
                 );
-                '''.format(t=table)
+                '''
     cur = psql_conn.cursor()
     cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)',('entrez_id_to_index',))
     if not cur.fetchone()[0]:
@@ -132,7 +132,7 @@ def psql_db_init(psql_conn):
         cur.close()
         psql_conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
         print('ERROR: database {d} already exists.'.format(d=database_name))
-        ans = input('Do you want to use the current database {d} (y/n)?'.format(d=database_name))
+        ans = input('Do you want to use the current database {d} (y/n)? '.format(d=database_name))
         if ans:
             return database_name
 

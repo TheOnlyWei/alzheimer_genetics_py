@@ -1,0 +1,45 @@
+RAW FILE INFO AND CHOICE OF DATABASES
+
+ROSMAP_RNASeq_entrez.csv:  (567 rows, 16,382 columns) Comma separated
+  - Stored in PostgreSQL
+  - 16,380 columns of Gene IDs
+  - Generally well-structured data with only 3 NULL values.
+  - gene expression values are stored in PostgreSQL arrays
+  - A gene_id_to_index table was created to map from gene_id to its
+    corresponding index in rosmap_rnaseq_entrez table.
+    - Takes only 102 milliseconds to retrieve gene_id's of 567 rows
+  - Aggregation functions such as min(), max(), and std() are typically faster
+    in a SQL database than a column-family, document-store, or a key-value store
+    database.
+    - And since database is not static, the mininum, maximum, and standard
+      deviation will change and needs to be recalculated.
+  - The only issue is horizontal scalability. We don't expect the database to
+    grow in columns, but we expect rows to grow. PostgreSQL is row-oriented, so
+    it fits our needs here as well.
+  - We also don't expect rows to grow fast, unlike social media data.
+  - Related to "patients.csv"
+
+patients.csv (567 rows, 4 columns) Comma separated
+	- Stored in PostgreSQL
+  - Generally well structured, not a lot of missing data.
+  - Only rows are expected to grow, although not horizontally scalable, a
+    row-oriented database such as PostgreSQL fits the job.
+  - Related to "ROSMAP_RNASeq_entrez.csv"
+
+entrez_ids_uniprot.csv:  (117,493 rows, 3 columns) Tab separated
+  - Stored in PostgreSQL
+  - Entrez ID to Uniprot ID is one to many mapping
+
+BIOGRID-MV-Physical-3.4.144:  (196,060, 24) Tab separated
+  - Stored in Neo4j.
+  - Associated data fits the criteria for a graph database such as Neo4j.
+  - Only two columns, Entrez Gene Interactor A and Entrez Gene Interactor B
+    are stored.
+  - Entrez Gene Interactor are IDs related to gene ids in
+    "ROSMAP_RNASeq_entrez.csv" and Entrez IDs in "entrez_ids_uniprot.csv"
+
+unitprot-human.xml
+	- Stored in MongoDB
+  - XML are documents best stored in a document database such as MongoDB.
+  - The file is extremely large and may grow. MongoDB is NoSQL, and is scalable
+    across multiple servers by sharding data.

@@ -36,16 +36,15 @@ def pandas_parse(in_file, delimiter, header = True):
         else:
             print('Error: unrecognized delimiter.')
     return None
-#BATCH INSERT FILE UPLOAD
-#patient gene expression profile and patient info should be parsed together
+
+# patient gene expression profile and patient info should be parsed together
+# 19.465895655000168 seconds to import and aggregate 567 rows and 16,382 columns from ROSMAP_RNASeq_entrez.csv
 def patient_gene_expr_file_insert(in_file, delimiter, psql_conn, header = True):
-    print('Importing file {f}.'.format(f=in_file))
-    print('If there is a conflict of patient ID, the program will replace the old one.')
+    print('Importing file {f}, please wait'.format(f=in_file))
+    print('If there is a conflict of patient ID, the program will replace the old data.')
     df = pandas_parse(in_file, delimiter)
     if df is None:
-        print('df: ', df)
         return False
-
     df = df.fillna('NULL')
     NCI = [1]
     MCI = [2,3]
@@ -70,9 +69,6 @@ def patient_gene_expr_file_insert(in_file, delimiter, psql_conn, header = True):
     cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)',('patients',))
     if not cur.fetchone()[0]:
         cdb.create_patients_table('patients', psql_conn)
-    else:
-        cur.close()
-        return False
 
     for index, row in df.iterrows():
         arr = row[2:].tolist()
@@ -107,8 +103,8 @@ def patient_info_file_insert(in_file,
                                 delimiter,
                                 psql_conn,
                                 header = True,):
-    print('Importing file {f}.'.format(f=in_file))
-    print('If there is a conflict of patient ID, the program will replace the old one.')
+    print('Importing file {f}, please wait'.format(f=in_file))
+    print('If there is a conflict of patient ID, the program will replace the old data.')
     df = pandas_parse(in_file, delimiter)
     if df is None:
         return False
@@ -132,16 +128,17 @@ def patient_info_file_insert(in_file,
     cur.close()
     return True
 
-
+# 192.025513048 seconds to import and aggregate 117,493 rows with 3 columns for entrez_ids_uniprot.txt
 def entrez_uniprot_file_insert(in_file,
                                 delimiter,
                                 psql_conn,
                                 header = True):
-    print('Importing file {f}.'.format(f=in_file))
-    print('If there is a conflict of entrez ID, the program will update missing values.')
-    delimiter = check_delimiter(delimiter)
-    if delimiter is None:
+    print('Importing file {f}, please wait'.format(f=in_file))
+    print('If there is a conflict of patient ID, the program will update missing data.')
+    df = pandas_parse(in_file, delimiter)
+    if df is None:
         return False
+    df = df.fillna('NULL')
 
     insert_sql = '''
                 INSERT INTO entrez_uniprot (entrez_id, uniprot_id, gene_name)
@@ -151,42 +148,31 @@ def entrez_uniprot_file_insert(in_file,
                         SELECT gene_name FROM entrez_uniprot WHERE entrez_id=%s;
                         '''
     update_sql_with_gene = '''
-                UPDATE entrez_uniprot SET uniprot_id = array_append(uniprot_id, {d}), gene_name = {n} WHERE entrez_id = %s;
+                UPDATE entrez_uniprot SET uniprot_id = array_append(uniprot_id, %s), gene_name = %s WHERE entrez_id = %s;
                 '''
     update_sql_no_gene = '''
-                UPDATE entrez_uniprot SET uniprot_id = array_append(uniprot_id, {d}) WHERE entrez_id = %s;
+                UPDATE entrez_uniprot SET uniprot_id = array_append(uniprot_id, %s) WHERE entrez_id = %s;
                 '''
     cur = psql_conn.cursor()
-
-    with open(in_file, 'r') as fi:
-        if header:
-            next(fi)
-        for line in fi:
-            cur_line = line
-            cur_line = cur_line.replace('\n', '')
-            data = re.split(r''+delimiter, cur_line)
-            # SQL for finding if entrez ID is already in the table
-            select_entrez_sql = 'SELECT entrez_id FROM entrez_uniprot WHERE entrez_id=%s;'
-            cur.execute(select_entrez_sql, (data[0],))
-            entrez_id = cur.fetchone()
-            if cur.rowcount > 0: # a corresponding entrez_id value exists
-                select_entrez_uniprot_sql = 'SELECT uniprot_id FROM entrez_uniprot WHERE %s=ANY(uniprot_id) and entrez_id=%s;'
-                cur.execute(select_entrez_uniprot_sql, (data[1], data[0],))
-                if cur.rowcount <= 0: # the uniprot ID doesn't exist, so insert
-                    for index, info in enumerate(data):
-                        if info == '' or info is None:
-                            data[index] = 'NULL'
-                    uniprot_id = '\'' + data[1] + '\''
-                    cur.execute(select_gene_sql, (data[0],)) # insert uniprot_id
-                    gene_name_result = cur.fetchone()
-                    if gene_name_result[0] == '':
-                        new_gene_name = '\'' + data[2] + '\''
-                        cur.execute(update_sql_with_gene.format(d=uniprot_id,n=new_gene_name),(data[0],))
-                    else:
-                        cur.execute(update_sql_no_gene.format(d=uniprot_id), (data[0],))
-            else: # not contained at all, so insert
-                uniprot_id = '{' + data[1] + '}'
-                cur.execute(insert_sql, (int(data[0]),uniprot_id,data[2]))
+    for index, row in df.iterrows():
+        select_entrez_sql = 'SELECT entrez_id FROM entrez_uniprot WHERE entrez_id=%s;'
+        cur.execute(select_entrez_sql, (row[0],))
+        entrez_id = cur.fetchone()
+        if cur.rowcount > 0: # a corresponding entrez_id value exists
+            select_uniprot_sql = 'SELECT uniprot_id FROM entrez_uniprot WHERE %s=ANY(uniprot_id) and entrez_id=%s;'
+            cur.execute(select_uniprot_sql, (row[1], row[0],))
+            if cur.rowcount <= 0: # the uniprot ID doesn't exist, so insert
+                uniprot_id = row[1]
+                cur.execute(select_gene_sql, (row[0],)) # insert uniprot_id
+                gene_name_result = cur.fetchone()
+                if gene_name_result[0] == 'NULL':
+                    new_gene_name = row[2]
+                    cur.execute(update_sql_with_gene,(uniprot_id, new_gene_name, row[0],))
+                else:
+                    cur.execute(update_sql_no_gene, (uniprot_id, row[0],))
+        else: # not contained at all, so insert
+            uniprot_id = '{' + row[1] + '}'
+            cur.execute(insert_sql, (int(row[0]),uniprot_id,row[2]))
 
     psql_conn.commit()
     cur.close()

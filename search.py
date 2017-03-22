@@ -38,17 +38,16 @@ def get_gene_stat(entrez_id, diagnosis, stat, psql_conn):
         entrez_id = str(entrez_id)
 
     if stat == 'mean':
-        select_sql = '''SELECT avg(gene_expression[%s])
-                        FROM {t}
-                        '''.format(t=diagnosis)
+        method = 'avg'
     elif stat == 'std_pop':
-        select_sql = '''SELECT stddev_pop(gene_expression[%s])
-                            FROM {t}
-                        '''.format(t=diagnosis)
+        method = 'stddev_pop'
     else:
         print('ERROR: unknown stat, currently we support "mean" or "std_pop"')
         return False
 
+    select_sql = '''SELECT {m}(gene_expression[%s])
+                    FROM {t}
+                    '''.format(m=method,t=diagnosis)
     select_gene_index = '''SELECT index
                             FROM entrez_id_to_index
                             WHERE entrez_id = %s;

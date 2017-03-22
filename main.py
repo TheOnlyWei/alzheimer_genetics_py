@@ -12,6 +12,7 @@ def main():
 
     info = cdb.get_psql_db_info()
     psql_conn = cdb.psql_init_connect(info) # also sets up database
+    
     print()
 
     file_path = input('Enter the file path for Entrez ID, Uniprot ID, and gene info.: ')
