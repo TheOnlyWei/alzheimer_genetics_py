@@ -108,7 +108,6 @@ def patient_info_insert(data, delimiter, psql_conn):
     cur.close()
     return True
 
-# TODO: entrez_uniprot table insert
 def entrez_uniprot_insert(data, delimiter, psql_conn):
     delimiter = tl.check_delimiter(delimiter)
     clean_data = data
@@ -116,7 +115,7 @@ def entrez_uniprot_insert(data, delimiter, psql_conn):
     clean_data = re.split(r''+delimiter, clean_data)
     clean_data = [x if x != '' and x.lower() != 'NA' else 'NULL' for x in clean_data]
     clean_data[1] = clean_data[1].replace(' ', '')
-    
+
     select_entrez_sql = 'SELECT EXISTS(SELECT 1 FROM entrez_uniprot WHERE entrez_id = %s)'
     select_uniprot_sql = 'SELECT uniprot_id FROM entrez_uniprot WHERE %s=ANY(uniprot_id) and entrez_id=%s;'
 
@@ -148,6 +147,9 @@ def entrez_uniprot_insert(data, delimiter, psql_conn):
                 cur.execute(update_sql_with_gene.format(d=uniprot_id,n=new_gene_name),(clean_data[0],))
             else:
                 cur.execute(update_sql_no_gene.format(d=uniprot_id), (clean_data[0],))
+        else:
+            cur.close()
+            return False
     else: # not contained at all, so insert
         uniprot_id = '{' + clean_data[1] + '}'
         cur.execute(insert_sql, (int(clean_data[0]),uniprot_id,clean_data[2]))
