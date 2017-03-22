@@ -1,23 +1,73 @@
 import psycopg2
-from pymongo import MongoClient
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
+import transform_load as tl
 
-def get_mongodb_collection(database, collection, mongo_client):
-    mongo_db = mongo_client[database]
-    result = mongo_db[collection]
-    return result
+def create_patients_table(psql_conn):
+    create_sql = '''
+                    CREATE TABLE patients (
+                        patient_id VARCHAR(20) PRIMARY KEY,
+                        diagnosis SMALLINT,
+                        age SMALLINT,
+                        gender VARCHAR(1),
+                        education VARCHAR(20)
+                    );
+                '''
+    cur = psql_conn.cursor()
+    cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)',('patients',))
+    if not cur.fetchone()[0]:
+        cur.execute(create_sql)
+    else:
+        cur.close()
+        return False
 
-def entrez_uniprot_init(mongo_db):
-    collection = input('Enter Entrez ID, uniprot ID, and gene name collection name: ')
-    collection = mongo_db[collection]
-    return collection
+    psql_conn.commit()
+    cur.close()
+    return True
 
-def create_diagnosis_tables(psql_conn, tables = []):
+# extracts entrez_id -> index mapping using ROSMAP_RNASeq_entrez.csv
+def create_entrez_id_to_index(in_file, delimiter, psql_conn):
+    delimiter = tl.check_delimiter(delimiter)
+    if delimiter is None:
+        return False
+
+    create_table = '''
+                CREATE TABLE entrez_id_to_index (
+                    entrez_id INTEGER PRIMARY KEY,
+                    index INTEGER
+                );
+                '''.format(t=table)
+    cur = psql_conn.cursor()
+    cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)',('entrez_id_to_index',))
+    if not cur.fetchone()[0]:
+        cur.execute(create_table)
+    else:
+        cur.close()
+        return False
+
+    insert_sql = '''
+                    INSERT INTO entrez_id_to_index (index, entrez_id)
+                    VALUES (%s, %s);
+                '''
+    # should be the ROSMAP_RNASeq_entrez file
+    with open(in_file) as fi:
+        entrez_id_arr = fi.readline().strip().split(delimiter)
+        index = 1
+        for entrez_id in entrez_id_arr[2:]:
+            cur.execute(insert_sql, (index, entrez_id))
+            index += 1
+
+    psql_conn.commit()
+    cur.close()
+
+    return True
+
+def create_diagnosis_tables(psql_conn):
+    tables = ['ad', 'nci', 'mci', 'na', 'other']
     create_table = '''
                 CREATE TABLE {t} (
-                    patient_id VARCHAR[20] PRIMARY KEY,
-                    gene_expression double precision []
+                    patient_id VARCHAR(20) PRIMARY KEY,
+                    gene_expression double precision [16380]
                 );
                 '''
     cur = psql_conn.cursor()
@@ -27,15 +77,15 @@ def create_diagnosis_tables(psql_conn, tables = []):
         if not cur.fetchone()[0]:
             cur.execute(create_table.format(t=diagnosis))
         else:
-            print('ERROR: table {t} already exists.'.format(t=diagnosis))
+            cur.close()
+            return False
 
     psql_conn.commit()
     cur.close()
+    return True
 
-def create_entrez_uniprot_table(table, psql_conn):
-    print('The Entre ID, Uniprot ID, and gene info. table will be named "{t}".'.format(t=table))
+def create_entrez_uniprot_table(psql_conn):
     #table_name = input('Enter the table name with entrez ID to uniprot ID mapping: ')
-
     create_table = '''
                 CREATE TABLE entrez_uniprot (
                     entrez_id INTEGER PRIMARY KEY,
@@ -45,18 +95,15 @@ def create_entrez_uniprot_table(table, psql_conn):
                 '''
 
     cur = psql_conn.cursor()
-    cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)', (table,))
+    cur.execute('SELECT exists(SELECT * from information_schema.tables WHERE table_name=%s)', ('entrez_uniprot',))
     if not cur.fetchone()[0]:
         cur.execute(create_table)
         psql_conn.commit()
         cur.close()
-        print('"entrez_uniprot" table created.')
         return True
 
     else:
         cur.close()
-        print('ERROR: table "entrez_uniprot" already exists.')
-        print('Skipping "entrez_uniprot" table creation')
         return False
 
 def get_psql_db_info():
