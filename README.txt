@@ -1,6 +1,6 @@
 INSTALL DEPENDENCIES
 
-PostgreSQL:
+PostgreSQL 9.5.6:
 https://www.postgresql.org/download/
 
 pip (I used pip3 for the entire project)
