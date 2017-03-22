@@ -51,7 +51,7 @@ INFORMATION ABOUT THE PROGRAM
       part 1 in "data/" folder.
       - t0.csv, t1.csv, t2.csv: different simplified versions of
         ROSMAP_RNASeq_entrez.csv
-        SCHEMA: <patient ID>, <16,380 entrez IDs>
+        SCHEMA: <patient ID>, <diagnosis>, <16,380 entrez IDs>
 
       - eiu.csv: simplified version of entrez_ids_uniprot.txt
         SCHEMA: <entrez ID>, <uniprot ID>, <gene name>
