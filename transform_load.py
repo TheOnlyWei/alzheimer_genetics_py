@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import itertools
 import psycopg2
-import math
 import re
 import create_db as cdb
 

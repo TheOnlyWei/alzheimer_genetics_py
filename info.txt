@@ -20,7 +20,7 @@ ROSMAP_RNASeq_entrez.csv:  (567 rows, 16,382 columns) Comma separated
   - Related to "patients.csv"
 
 patients.csv (567 rows, 4 columns) Comma separated
-	- Stored in PostgreSQL
+  - Stored in PostgreSQL
   - Generally well structured, not a lot of missing data.
   - Only rows are expected to grow, although not horizontally scalable, a
     row-oriented database such as PostgreSQL fits the job.
@@ -39,7 +39,7 @@ BIOGRID-MV-Physical-3.4.144:  (196,060, 24) Tab separated
     "ROSMAP_RNASeq_entrez.csv" and Entrez IDs in "entrez_ids_uniprot.csv"
 
 unitprot-human.xml
-	- Stored in MongoDB
+  - Stored in MongoDB
   - XML are documents best stored in a document database such as MongoDB.
   - The file is extremely large and may grow. MongoDB is NoSQL, and is scalable
     across multiple servers by sharding data.

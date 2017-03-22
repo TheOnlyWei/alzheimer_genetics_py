@@ -7,7 +7,7 @@ def main():
     print('''Here we set up PostgreSQL database for the
             1. Entrez ID to Uniprot ID and gene information table.
             2. Patient gene expression profile file.
-            3. Patient age, gender, and education file.\n
+            3. Patient age, gender, and education file.
             ''')
 
     info = cdb.get_psql_db_info()

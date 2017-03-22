@@ -13,6 +13,7 @@ def get_gene_stat(entrez_id, diagnosis, stat, psql_conn):
     AD = [4,5]
     other = [6]
     diagnosis_arr = ['nci', 'mci', 'ad', 'other', 'na']
+    
     if type(diagnosis) is int:
         if diagnosis in NCI:
             diagnosis = 'nci'
